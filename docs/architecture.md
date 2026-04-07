@@ -42,8 +42,10 @@ RESET
   │
   ├─ Validate application image
   │   ├─ Magic == 0x424F4F54 ?
+  │   ├─ Header version, size bounds, VT offset OK ?
   │   ├─ CRC32 matches stored value ?
-  │   └─ MSP points into SRAM ?
+  │   ├─ MSP points into SRAM ?
+  │   └─ Reset vector is Thumb & within app flash ?
   │
   ├─ Valid → jump to application
   │   ├─ Disable IRQs

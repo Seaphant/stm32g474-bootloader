@@ -1,20 +1,25 @@
 /*
- * Bootloader entry point — Milestone 1: UART hello + LED blink.
+ * Bootloader entry point.
  *
- * Purpose:
- *   Verify the MCU boots from the bootloader flash region (0x08000000),
- *   the clock tree is running (SysTick ticks), the UART transmits
- *   correctly, and GPIO toggles the LED.
+ * Boot-decision flow:
+ *   1. Init clock, GPIO (LED + boot pin), UART, SysTick
+ *   2. Read boot pin (PC13 — user button B1, active-low on Nucleo)
+ *   3. If button NOT pressed → validate application image
+ *      - Valid   → tear down peripherals, jump to app
+ *      - Invalid → fall through to update mode
+ *   4. If button pressed → enter update mode directly
  *
- * Later milestones will progressively add:
- *   M3 — jump-to-application
- *   M5 — image validation (magic + CRC32)
- *   M7 — UART update protocol
+ * Update mode runs protocol_run(), which handles erase / write /
+ * verify / boot commands over UART.
  */
 
 #include "bootloader.h"
 #include "bl_uart.h"
+#include "bl_jump.h"
+#include "bl_protocol.h"
 #include "stm32g474xx.h"
+#include "memory_map.h"
+#include "image_header.h"
 
 /* ------------------------------------------------------------------ */
 
@@ -25,11 +30,21 @@ static void gpio_init(void)
     m &= ~(3UL << (LED_PIN * 2));
     m |=  (GPIO_MODER_OUTPUT << (LED_PIN * 2));
     GPIOx_MODER(GPIOA_BASE) = m;
+
+    /* PC13 → digital input with pull-up (user button B1) */
+    m = GPIOx_MODER(BOOT_PIN_PORT);
+    m &= ~(3UL << (BOOT_PIN * 2));
+    GPIOx_MODER(BOOT_PIN_PORT) = m;
+
+    uint32_t pupdr = GPIOx_PUPDR(BOOT_PIN_PORT);
+    pupdr &= ~(3UL << (BOOT_PIN * 2));
+    pupdr |=  (1UL << (BOOT_PIN * 2));
+    GPIOx_PUPDR(BOOT_PIN_PORT) = pupdr;
 }
 
-static void led_toggle(void)
+static int boot_pin_pressed(void)
 {
-    GPIOx_ODR(LED_PORT) ^= (1UL << LED_PIN);
+    return !(GPIOx_IDR(BOOT_PIN_PORT) & (1UL << BOOT_PIN));
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,15 +55,27 @@ int main(void)
     gpio_init();
     uart_init(BL_UART_BAUD);
 
-    uart_puts("\r\n");
-    uart_puts("=== STM32G474 Bootloader v" BL_VERSION_STR " ===\r\n");
-    uart_puts("[BL] Milestone 1 — boot OK\r\n");
-    uart_puts("[BL] UART @ 115200, HSI16, SysTick 1 ms\r\n");
+    uart_puts("\r\n=== STM32G474 Bootloader v" BL_VERSION_STR " ===\r\n");
 
-    while (1) {
-        led_toggle();
-        uint32_t t = g_tick_ms;
-        while ((g_tick_ms - t) < 500U)
-            ;
+    if (!boot_pin_pressed()) {
+        const image_header_t *hdr = (const image_header_t *)APP_HEADER_ADDR;
+
+        uart_puts("[BL] Validating application image...\r\n");
+
+        if (validate_image(hdr) == BL_OK) {
+            uart_puts("[BL] Image valid — jumping to application\r\n");
+            uart_deinit();
+            jump_to_application(APP_VECTOR_ADDR);
+        }
+
+        uart_puts("[BL] No valid image — entering update mode\r\n");
+    } else {
+        uart_puts("[BL] Boot pin held — forced update mode\r\n");
     }
+
+    uart_puts("[BL] Waiting for host (UART protocol)...\r\n");
+    protocol_run();
+
+    while (1)
+        ;
 }

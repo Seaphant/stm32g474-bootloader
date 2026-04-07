@@ -47,6 +47,13 @@ int validate_image(const image_header_t *hdr)
     if (app_msp < SRAM_BASE_ADDR || app_msp > (SRAM_BASE_ADDR + SRAM_SIZE))
         return BL_ERROR;
 
+    /* Reset vector must be Thumb (bit 0 set) and within app flash */
+    uint32_t app_reset = *(volatile uint32_t *)(APP_VECTOR_ADDR + 4U);
+    if (!(app_reset & 1UL))
+        return BL_ERROR;
+    if ((app_reset & ~1UL) < APP_VECTOR_ADDR || (app_reset & ~1UL) >= APP_FLASH_END)
+        return BL_ERROR;
+
     return BL_OK;
 }
 

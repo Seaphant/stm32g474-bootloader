@@ -14,7 +14,7 @@ Typical session:
     1. PING        — verify bootloader is listening
     2. VERSION     — read bootloader version
     3. ERASE       — erase entire application region
-    4. WRITE ×N    — stream the packed image in 256-byte chunks
+    4. WRITE ×N    — stream the packed image in 248-byte chunks
     5. VERIFY      — ask the target to CRC-check what was written
     6. BOOT        — jump to the new application
 
@@ -43,7 +43,7 @@ CMD_BOOT        = 0x06
 
 STATUS_OK       = 0x00
 
-CHUNK_SIZE      = 256       # must be a multiple of 8 (flash alignment)
+CHUNK_SIZE      = 248       # 256 max payload - 4 offset bytes, 8-byte aligned
 HEADER_SIZE     = 512
 
 
