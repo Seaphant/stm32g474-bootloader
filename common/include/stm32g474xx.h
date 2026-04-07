@@ -119,11 +119,15 @@
 #define USART_CR1_RE            (1UL << 2)
 #define USART_CR1_TE            (1UL << 3)
 
+#define USART_ISR_FE            (1UL << 1)
+#define USART_ISR_NE            (1UL << 2)
 #define USART_ISR_ORE           (1UL << 3)
 #define USART_ISR_RXNE          (1UL << 5)
 #define USART_ISR_TC            (1UL << 6)
 #define USART_ISR_TXE           (1UL << 7)
 
+#define USART_ICR_FECF          (1UL << 1)
+#define USART_ICR_NECF          (1UL << 2)
 #define USART_ICR_ORECF         (1UL << 3)
 
 /* ------------------------------------------------------------------ */
@@ -142,7 +146,7 @@ static inline void __enable_irq(void)
 
 static inline void __set_MSP(uint32_t msp)
 {
-    __asm volatile ("MSR msp, %0" :: "r" (msp) :);
+    __asm volatile ("MSR msp, %0" :: "r" (msp) : "memory");
 }
 
 static inline void __DSB(void)

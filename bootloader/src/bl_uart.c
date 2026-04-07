@@ -57,11 +57,12 @@ int uart_recv_byte(uint8_t *byte, uint32_t timeout_ms)
     uint32_t start = g_tick_ms;
 
     while ((g_tick_ms - start) < timeout_ms) {
-        /* Clear any overrun so the peripheral keeps receiving */
-        if (USARTx_ISR(USART2_BASE) & USART_ISR_ORE)
-            USARTx_ICR(USART2_BASE) = USART_ICR_ORECF;
+        uint32_t isr = USARTx_ISR(USART2_BASE);
+        if (isr & (USART_ISR_ORE | USART_ISR_FE | USART_ISR_NE))
+            USARTx_ICR(USART2_BASE) = USART_ICR_ORECF | USART_ICR_FECF
+                                    | USART_ICR_NECF;
 
-        if (USARTx_ISR(USART2_BASE) & USART_ISR_RXNE) {
+        if (isr & USART_ISR_RXNE) {
             *byte = (uint8_t)USARTx_RDR(USART2_BASE);
             return 0;
         }

@@ -82,6 +82,7 @@ void jump_to_application(uint32_t vector_table_addr)
     uint32_t app_reset = *(volatile uint32_t *)(vector_table_addr + 4U);
 
     __set_MSP(app_msp);
+    __ISB();
     __enable_irq();
 
     ((void (*)(void))app_reset)();

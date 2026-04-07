@@ -33,13 +33,12 @@ void PendSV_Handler(void)     __attribute__((weak, alias("Default_Handler")));
 void SysTick_Handler(void)    __attribute__((weak, alias("Default_Handler")));
 
 /*
- * Vector table.  Entry 0 is the initial MSP; entry 1 is the reset
- * handler.  Remaining entries cover the standard Cortex-M exceptions.
- * Peripheral IRQs are unused in the bootloader — any stray interrupt
- * will land in Default_Handler.
+ * Vector table — 16 system exceptions + 112 peripheral IRQ slots.
+ * Padding to 128 entries ensures a stray peripheral interrupt lands
+ * in Default_Handler instead of reading garbage from .text.
  */
 __attribute__((section(".isr_vector"), used))
-const uint32_t g_vector_table[] = {
+const uint32_t g_vector_table[128] = {
     (uint32_t)&_estack,             /*  0  Initial MSP              */
     (uint32_t)Reset_Handler,        /*  1  Reset                    */
     (uint32_t)NMI_Handler,          /*  2  NMI                      */
@@ -53,6 +52,7 @@ const uint32_t g_vector_table[] = {
     0,                              /* 13  Reserved                 */
     (uint32_t)PendSV_Handler,       /* 14  PendSV                   */
     (uint32_t)SysTick_Handler,      /* 15  SysTick                  */
+    /* 16-127: peripheral IRQs — zero-init → Default_Handler via HardFault trap */
 };
 
 void Reset_Handler(void)

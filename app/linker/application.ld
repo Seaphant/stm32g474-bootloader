@@ -84,4 +84,6 @@ SECTIONS
     }
 
     .ARM.attributes 0 : { *(.ARM.attributes) }
+
+    ASSERT(. <= ORIGIN(FLASH) + LENGTH(FLASH), "Application exceeds flash region")
 }

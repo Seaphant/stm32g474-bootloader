@@ -7,7 +7,11 @@
 #define BL_VERSION_MAJOR    1
 #define BL_VERSION_MINOR    0
 #define BL_VERSION_PATCH    0
-#define BL_VERSION_STR      "1.0.0"
+#define BL_STR(x)           #x
+#define BL_XSTR(x)          BL_STR(x)
+#define BL_VERSION_STR      BL_XSTR(BL_VERSION_MAJOR) "." \
+                            BL_XSTR(BL_VERSION_MINOR) "." \
+                            BL_XSTR(BL_VERSION_PATCH)
 
 /* UART */
 #define BL_UART_BAUD        115200UL

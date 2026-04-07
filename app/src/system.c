@@ -18,7 +18,6 @@ void system_init(void)
 
     RCC_AHB2ENR  |= RCC_AHB2ENR_GPIOAEN;
     RCC_APB1ENR1 |= RCC_APB1ENR1_USART2EN;
-
-    for (volatile int i = 0; i < 100; i++)
-        ;
+    (void)RCC_AHB2ENR;
+    (void)RCC_APB1ENR1;
 }

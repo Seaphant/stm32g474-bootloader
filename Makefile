@@ -1,6 +1,6 @@
 # Top-level Makefile — builds bootloader, application, and packed image.
 
-.PHONY: all bootloader app pack clean flash-bl flash-app
+.PHONY: all bootloader app pack clean flash-bl flash-app flash-all
 
 all: bootloader app pack
 
@@ -24,4 +24,9 @@ flash-bl: bootloader
 
 flash-app: pack
 	openocd -f openocd.cfg \
+	  -c "program app/build/application_packed.bin 0x08010000 verify reset exit"
+
+flash-all: bootloader pack
+	openocd -f openocd.cfg \
+	  -c "program bootloader/build/bootloader.bin 0x08000000 verify" \
 	  -c "program app/build/application_packed.bin 0x08010000 verify reset exit"

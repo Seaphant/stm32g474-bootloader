@@ -8,7 +8,7 @@ SIZE    = $(CROSS_COMPILE)size
 BUILD_DIR = build
 
 CFLAGS  = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
-CFLAGS += -std=c11 -Wall -Wextra -Werror -pedantic
+CFLAGS += -std=c11 -Wall -Wextra -Werror -pedantic -Wshadow -Wdouble-promotion
 CFLAGS += -Os -g -ffreestanding
 CFLAGS += -ffunction-sections -fdata-sections -fno-common
 CFLAGS += -Iinclude -I../common/include

@@ -45,6 +45,7 @@ STATUS_OK       = 0x00
 
 CHUNK_SIZE      = 248       # 256 max payload - 4 offset bytes, 8-byte aligned
 HEADER_SIZE     = 512
+MAX_RETRIES     = 3
 
 
 # --- CRC16-CCITT ----------------------------------------------------------
@@ -123,64 +124,74 @@ def main():
 
     print(f"Image : {len(image)} bytes total, code {img_size} bytes, CRC 0x{img_crc:08X}")
 
-    ser = serial.Serial(args.port, args.baud, timeout=1)
-    time.sleep(0.1)
-    ser.reset_input_buffer()
+    with serial.Serial(args.port, args.baud, timeout=1) as ser:
+        time.sleep(0.1)
+        ser.reset_input_buffer()
 
-    # 1. Ping
-    print("PING  ... ", end="", flush=True)
-    st, _ = send_cmd(ser, CMD_PING)
-    if st != STATUS_OK:
-        sys.exit(f"FAIL (0x{st:02X})")
-    print("OK")
-
-    # 2. Version
-    print("VER   ... ", end="", flush=True)
-    st, d = send_cmd(ser, CMD_VERSION)
-    if st == STATUS_OK and len(d) >= 3:
-        print(f"{d[0]}.{d[1]}.{d[2]}")
-    else:
-        print("unknown")
-
-    # 3. Erase
-    print("ERASE ... ", end="", flush=True)
-    st, _ = send_cmd(ser, CMD_ERASE, timeout=30.0)
-    if st != STATUS_OK:
-        sys.exit(f"FAIL (0x{st:02X})")
-    print("OK")
-
-    # 4. Write
-    total = len(image)
-    written = 0
-    while written < total:
-        chunk = image[written : written + CHUNK_SIZE]
-        payload = struct.pack("<I", written) + chunk
-        st, _ = send_cmd(ser, CMD_WRITE, payload)
-        if st != STATUS_OK:
-            sys.exit(f"\nWrite failed at offset 0x{written:08X} (0x{st:02X})")
-        written += len(chunk)
-        pct = written * 100 // total
-        bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
-        print(f"\rWRITE [{bar}] {pct:3d}%  ({written}/{total})", end="", flush=True)
-    print("  OK")
-
-    # 5. Verify
-    print("CRC   ... ", end="", flush=True)
-    st, _ = send_cmd(ser, CMD_VERIFY, struct.pack("<II", img_crc, img_size))
-    if st != STATUS_OK:
-        sys.exit(f"FAIL (0x{st:02X})")
-    print("OK")
-
-    # 6. Boot
-    if not args.no_boot:
-        print("BOOT  ... ", end="", flush=True)
-        st, _ = send_cmd(ser, CMD_BOOT)
+        # 1. Ping
+        print("PING  ... ", end="", flush=True)
+        st, _ = send_cmd(ser, CMD_PING)
         if st != STATUS_OK:
             sys.exit(f"FAIL (0x{st:02X})")
         print("OK")
 
-    print("\nFirmware update complete.")
-    ser.close()
+        # 2. Version
+        print("VER   ... ", end="", flush=True)
+        st, d = send_cmd(ser, CMD_VERSION)
+        if st == STATUS_OK and len(d) >= 3:
+            print(f"{d[0]}.{d[1]}.{d[2]}")
+        else:
+            print("unknown")
+
+        # 3. Erase
+        print("ERASE ... ", end="", flush=True)
+        st, _ = send_cmd(ser, CMD_ERASE, timeout=30.0)
+        if st != STATUS_OK:
+            sys.exit(f"FAIL (0x{st:02X})")
+        print("OK")
+
+        # 4. Write (with retry)
+        total = len(image)
+        written = 0
+        while written < total:
+            chunk = image[written : written + CHUNK_SIZE]
+            payload = struct.pack("<I", written) + chunk
+
+            for attempt in range(1, MAX_RETRIES + 1):
+                try:
+                    st, _ = send_cmd(ser, CMD_WRITE, payload)
+                    if st == STATUS_OK:
+                        break
+                except RuntimeError:
+                    st = 0xFF
+                if attempt == MAX_RETRIES:
+                    sys.exit(f"\nWrite failed at offset 0x{written:08X} "
+                             f"(0x{st:02X}) after {MAX_RETRIES} attempts")
+                time.sleep(0.05)
+
+            written += len(chunk)
+            pct = written * 100 // total
+            bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
+            print(f"\rWRITE [{bar}] {pct:3d}%  ({written}/{total})",
+                  end="", flush=True)
+        print("  OK")
+
+        # 5. Verify
+        print("CRC   ... ", end="", flush=True)
+        st, _ = send_cmd(ser, CMD_VERIFY, struct.pack("<II", img_crc, img_size))
+        if st != STATUS_OK:
+            sys.exit(f"FAIL (0x{st:02X})")
+        print("OK")
+
+        # 6. Boot
+        if not args.no_boot:
+            print("BOOT  ... ", end="", flush=True)
+            st, _ = send_cmd(ser, CMD_BOOT)
+            if st != STATUS_OK:
+                sys.exit(f"FAIL (0x{st:02X})")
+            print("OK")
+
+        print("\nFirmware update complete.")
 
 
 if __name__ == "__main__":

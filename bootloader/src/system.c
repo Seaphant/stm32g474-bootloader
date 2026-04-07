@@ -32,6 +32,8 @@ void system_init(void)
     /* Enable clocks for the peripherals we touch */
     RCC_AHB2ENR  |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN;
     RCC_APB1ENR1 |= RCC_APB1ENR1_USART2EN;
+    (void)RCC_AHB2ENR;
+    (void)RCC_APB1ENR1;
 
     /* SysTick — 1 ms tick from the 16 MHz processor clock */
     SYSTICK_LOAD = 16000UL - 1;

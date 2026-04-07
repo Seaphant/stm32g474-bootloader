@@ -31,8 +31,13 @@ void DebugMon_Handler(void)   __attribute__((weak, alias("Default_Handler")));
 void PendSV_Handler(void)     __attribute__((weak, alias("Default_Handler")));
 void SysTick_Handler(void)    __attribute__((weak, alias("Default_Handler")));
 
+/*
+ * 16 system exceptions + 112 peripheral IRQ slots.
+ * Padding to 128 entries ensures stray interrupts land in
+ * Default_Handler instead of fetching garbage addresses.
+ */
 __attribute__((section(".isr_vector"), used))
-const uint32_t g_vector_table[] = {
+const uint32_t g_vector_table[128] = {
     (uint32_t)&_estack,
     (uint32_t)Reset_Handler,
     (uint32_t)NMI_Handler,
@@ -46,6 +51,7 @@ const uint32_t g_vector_table[] = {
     0,
     (uint32_t)PendSV_Handler,
     (uint32_t)SysTick_Handler,
+    /* 16-127: peripheral IRQs — zero-init */
 };
 
 void Reset_Handler(void)

@@ -77,4 +77,6 @@ SECTIONS
     }
 
     .ARM.attributes 0 : { *(.ARM.attributes) }
+
+    ASSERT(. <= ORIGIN(FLASH) + LENGTH(FLASH), "Bootloader exceeds 64K flash region")
 }

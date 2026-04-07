@@ -16,10 +16,16 @@
 
 /* ------------------------------------------------------------------ */
 
-static void flash_wait_bsy(void)
+#define FLASH_TIMEOUT_CYCLES  1000000UL
+
+static int flash_wait_bsy(void)
 {
-    while (FLASH_SR & FLASH_SR_BSY)
-        ;
+    uint32_t count = FLASH_TIMEOUT_CYCLES;
+    while (FLASH_SR & FLASH_SR_BSY) {
+        if (--count == 0)
+            return BL_TIMEOUT;
+    }
+    return BL_OK;
 }
 
 static void flash_clear_errors(void)
@@ -49,15 +55,21 @@ int flash_erase_page(uint32_t page)
 {
     if (page < APP_PAGE_START)
         return BL_ERROR;
+    if (page >= APP_PAGE_START + APP_PAGE_COUNT)
+        return BL_ERROR;
 
-    flash_wait_bsy();
+    if (flash_wait_bsy() != BL_OK)
+        return BL_TIMEOUT;
     flash_clear_errors();
 
     FLASH_CR &= ~FLASH_CR_PNB_MSK;
     FLASH_CR |= (page << FLASH_CR_PNB_POS) | FLASH_CR_PER;
     FLASH_CR |= FLASH_CR_STRT;
 
-    flash_wait_bsy();
+    if (flash_wait_bsy() != BL_OK) {
+        FLASH_CR &= ~FLASH_CR_PER;
+        return BL_TIMEOUT;
+    }
 
     if (FLASH_SR & FLASH_SR_ERR_MASK) {
         FLASH_CR &= ~FLASH_CR_PER;
@@ -115,14 +127,21 @@ int flash_write(uint32_t address, const uint8_t *data, uint32_t len)
         uint32_t word_hi = (uint32_t)buf[4]       | ((uint32_t)buf[5] << 8)
                          | ((uint32_t)buf[6] << 16) | ((uint32_t)buf[7] << 24);
 
-        flash_wait_bsy();
+        if (flash_wait_bsy() != BL_OK) {
+            flash_lock();
+            return BL_TIMEOUT;
+        }
         FLASH_CR |= FLASH_CR_PG;
 
         /* Double-word program: write low word, then high word */
         *(volatile uint32_t *)(address + pos)       = word_lo;
         *(volatile uint32_t *)(address + pos + 4UL) = word_hi;
 
-        flash_wait_bsy();
+        if (flash_wait_bsy() != BL_OK) {
+            FLASH_CR &= ~FLASH_CR_PG;
+            flash_lock();
+            return BL_TIMEOUT;
+        }
 
         if (FLASH_SR & FLASH_SR_ERR_MASK) {
             FLASH_CR &= ~FLASH_CR_PG;

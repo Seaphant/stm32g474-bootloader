@@ -61,7 +61,7 @@ static void uart_init_simple(void)
     GPIOx_AFRL(GPIOA_BASE) = afrl;
 
     USARTx_CR1(USART2_BASE) = 0;
-    USARTx_BRR(USART2_BASE) = 139;     /* 16 MHz / 115200 ≈ 139 */
+    USARTx_BRR(USART2_BASE) = (HSI_FREQ + APP_UART_BAUD / 2U) / APP_UART_BAUD;
     USARTx_CR1(USART2_BASE) = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE;
 }
 
@@ -87,13 +87,11 @@ int main(void)
     GPIOx_MODER(GPIOA_BASE) = m;
 
     uart_init_simple();
-    uart_puts("\r\n--- Application v");
-    uart_putc('0' + APP_VERSION_MAJOR);
-    uart_putc('.');
-    uart_putc('0' + APP_VERSION_MINOR);
-    uart_putc('.');
-    uart_putc('0' + APP_VERSION_PATCH);
-    uart_puts(" running ---\r\n");
+    uart_puts("\r\n--- Application v"
+              APP_XSTR(APP_VERSION_MAJOR) "."
+              APP_XSTR(APP_VERSION_MINOR) "."
+              APP_XSTR(APP_VERSION_PATCH)
+              " running ---\r\n");
 
     while (1) {
         GPIOx_ODR(GPIOA_BASE) ^= (1UL << LED_PIN);

@@ -44,6 +44,10 @@ static void gpio_init(void)
 
 static int boot_pin_pressed(void)
 {
+    if (GPIOx_IDR(BOOT_PIN_PORT) & (1UL << BOOT_PIN))
+        return 0;
+    for (volatile int i = 0; i < 10000; i++)
+        ;
     return !(GPIOx_IDR(BOOT_PIN_PORT) & (1UL << BOOT_PIN));
 }
 
