@@ -64,11 +64,11 @@ int uart_recv_byte(uint8_t *byte, uint32_t timeout_ms)
 
         if (isr & USART_ISR_RXNE) {
             *byte = (uint8_t)USARTx_RDR(USART2_BASE);
-            return 0;
+            return BL_OK;
         }
     }
 
-    return -1;
+    return BL_TIMEOUT;
 }
 
 void uart_send(const uint8_t *data, uint32_t len)
