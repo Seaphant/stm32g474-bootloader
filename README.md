@@ -89,6 +89,8 @@ make flash-app
 python3 tools/uart_updater.py /dev/ttyACM0 app/build/application_packed.bin
 ```
 
+On Windows, use a COM port (for example `COM5`) instead of `/dev/ttyACM0`.
+
 Expected output:
 
 ```
