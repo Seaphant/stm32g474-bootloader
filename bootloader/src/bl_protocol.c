@@ -149,6 +149,11 @@ static void handle_write(const packet_t *pkt)
     uint32_t addr     = APP_FLASH_START + offset;
     uint16_t data_len = pkt->length - 4U;
 
+    if ((uint64_t)offset + (uint64_t)data_len > (uint64_t)APP_FLASH_SIZE) {
+        send_response(STATUS_ERR_ADDR, NULL, 0);
+        return;
+    }
+
     uint8_t s = (flash_write(addr, &pkt->data[4], data_len) == BL_OK)
                 ? STATUS_OK : STATUS_ERR_WRITE;
     send_response(s, NULL, 0);
@@ -170,6 +175,12 @@ static void handle_verify(const packet_t *pkt)
                       | ((uint32_t)pkt->data[5] << 8)
                       | ((uint32_t)pkt->data[6] << 16)
                       | ((uint32_t)pkt->data[7] << 24);
+
+    if (img_size == 0U || img_size == 0xFFFFFFFFUL
+        || img_size > (APP_FLASH_SIZE - IMAGE_HEADER_SIZE)) {
+        send_response(STATUS_ERR_LEN, NULL, 0);
+        return;
+    }
 
     const uint8_t *app = (const uint8_t *)(APP_FLASH_START + IMAGE_HEADER_SIZE);
     uint32_t computed  = crc32_compute(app, img_size);
