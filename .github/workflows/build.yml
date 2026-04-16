@@ -1,0 +1,41 @@
+name: Firmware Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM GCC toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Build bootloader
+        run: make bootloader
+
+      - name: Build application
+        run: make app
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r tools/requirements.txt
+
+      - name: Pack application image
+        run: make pack
+
+      - name: Print sizes
+        run: |
+          arm-none-eabi-size bootloader/build/bootloader.elf
+          arm-none-eabi-size app/build/application.elf

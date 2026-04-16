@@ -47,8 +47,9 @@ N..N+1 CRC16        CRC16-CCITT over [STATUS, LEN, DATA]
 | 0x02 | VERSION | (none)                        | [major, minor, patch] | 3 bytes |
 | 0x03 | ERASE   | (none)                        | (none)           | Erases full app region; ~2 s |
 | 0x04 | WRITE   | [offset: 4B LE] [data: 1-248B]| (none)           | Offset relative to 0x0801 0000; 8-byte aligned |
-| 0x05 | VERIFY  | [crc32: 4B LE] [size: 4B LE]  | (none)           | CRC over code after header |
+| 0x05 | VERIFY  | [crc32: 4B LE] [size: 4B LE]  | [bytes_written: 4B LE] | CRC over code after header; returns session write count |
 | 0x06 | BOOT    | (none)                        | (none)           | Validates, then jumps |
+| 0x07 | RESET   | (none)                        | (none)           | ACKs then triggers NVIC system reset |
 
 ## Status Codes
 

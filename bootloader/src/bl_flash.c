@@ -152,6 +152,14 @@ int flash_write(uint32_t address, const uint8_t *data, uint32_t len)
         FLASH_SR  = FLASH_SR_EOP;
         FLASH_CR &= ~FLASH_CR_PG;
 
+        /* Read-back verify: confirm programmed data matches */
+        uint32_t rb_lo = *(volatile uint32_t *)(address + pos);
+        uint32_t rb_hi = *(volatile uint32_t *)(address + pos + 4UL);
+        if (rb_lo != word_lo || rb_hi != word_hi) {
+            flash_lock();
+            return BL_ERROR;
+        }
+
         pos += 8U;
     }
 

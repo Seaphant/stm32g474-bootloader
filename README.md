@@ -16,8 +16,11 @@ logic.  Written in register-level C with no HAL dependency.
   with CRC16 packet integrity
 - **Safe jump-to-app** — full peripheral teardown, VTOR relocation, MSP
   reload, DSB/ISB barriers
+- **Flash read-back verify** — each double-word is verified after programming
+- **Software reset command** — host can trigger NVIC system reset via protocol
 - **Python host tool** — `uart_updater.py` with progress bar, verification,
   and error handling
+- **CI** — GitHub Actions builds bootloader + application on every push
 - **Zero libc dependency** — built with `-nostdlib -ffreestanding`
 
 ## Repository Structure
@@ -44,6 +47,7 @@ stm32g474-bootloader/
 │   ├── architecture.md
 │   ├── protocol.md
 │   └── interview_notes.md
+├── .github/workflows/    CI pipeline (ARM GCC build)
 ├── openocd.cfg           OpenOCD config for Nucleo-G474RE
 ├── Makefile              Top-level build orchestration
 └── README.md

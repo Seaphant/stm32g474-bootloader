@@ -15,6 +15,7 @@
 #define CMD_WRITE           0x04U
 #define CMD_VERIFY          0x05U
 #define CMD_BOOT            0x06U
+#define CMD_RESET           0x07U
 
 /* Response status codes */
 #define STATUS_OK           0x00U

@@ -114,6 +114,12 @@ static void send_response(uint8_t status, const uint8_t *data, uint16_t len)
 }
 
 /* ------------------------------------------------------------------ */
+/*  Write tracking                                                    */
+/* ------------------------------------------------------------------ */
+
+static uint32_t s_bytes_written;
+
+/* ------------------------------------------------------------------ */
 /*  Command handlers                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -130,8 +136,12 @@ static void handle_version(void)
 
 static void handle_erase(void)
 {
-    uint8_t s = (flash_erase_app_region() == BL_OK) ? STATUS_OK : STATUS_ERR_ERASE;
-    send_response(s, NULL, 0);
+    if (flash_erase_app_region() != BL_OK) {
+        send_response(STATUS_ERR_ERASE, NULL, 0);
+        return;
+    }
+    s_bytes_written = 0U;
+    send_response(STATUS_OK, NULL, 0);
 }
 
 static void handle_write(const packet_t *pkt)
@@ -154,9 +164,12 @@ static void handle_write(const packet_t *pkt)
         return;
     }
 
-    uint8_t s = (flash_write(addr, &pkt->data[4], data_len) == BL_OK)
-                ? STATUS_OK : STATUS_ERR_WRITE;
-    send_response(s, NULL, 0);
+    if (flash_write(addr, &pkt->data[4], data_len) != BL_OK) {
+        send_response(STATUS_ERR_WRITE, NULL, 0);
+        return;
+    }
+    s_bytes_written += data_len;
+    send_response(STATUS_OK, NULL, 0);
 }
 
 static void handle_verify(const packet_t *pkt)
@@ -185,8 +198,18 @@ static void handle_verify(const packet_t *pkt)
     const uint8_t *app = (const uint8_t *)(APP_FLASH_START + IMAGE_HEADER_SIZE);
     uint32_t computed  = crc32_compute(app, img_size);
 
-    send_response((computed == expected_crc) ? STATUS_OK : STATUS_ERR_VERIFY,
-                  NULL, 0);
+    if (computed != expected_crc) {
+        send_response(STATUS_ERR_VERIFY, NULL, 0);
+        return;
+    }
+
+    /* Return total bytes written during this session */
+    uint8_t resp[4];
+    resp[0] = (uint8_t)(s_bytes_written & 0xFFU);
+    resp[1] = (uint8_t)((s_bytes_written >> 8) & 0xFFU);
+    resp[2] = (uint8_t)((s_bytes_written >> 16) & 0xFFU);
+    resp[3] = (uint8_t)((s_bytes_written >> 24) & 0xFFU);
+    send_response(STATUS_OK, resp, 4);
 }
 
 static void handle_boot(void)
@@ -206,6 +229,21 @@ static void handle_boot(void)
 
     uart_deinit();
     jump_to_application(APP_VECTOR_ADDR);
+}
+
+static void handle_reset(void)
+{
+    send_response(STATUS_OK, NULL, 0);
+
+    uint32_t t = g_tick_ms;
+    while ((g_tick_ms - t) < 50U)
+        ;
+
+    /* Request system reset via the Cortex-M AIRCR register */
+    SCB_AIRCR = (0x5FAUL << 16) | (1UL << 2);
+    __DSB();
+    while (1)
+        ;
 }
 
 /* ------------------------------------------------------------------ */
@@ -238,6 +276,7 @@ void protocol_run(void)
         case CMD_WRITE:   handle_write(&pkt);   break;
         case CMD_VERIFY:  handle_verify(&pkt);  break;
         case CMD_BOOT:    handle_boot();        break;
+        case CMD_RESET:   handle_reset();       break;
         default:
             send_response(STATUS_ERR_CMD, NULL, 0);
             break;

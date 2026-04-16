@@ -14,6 +14,7 @@
 /* ------------------------------------------------------------------ */
 
 #define SCB_VTOR            (*(volatile uint32_t *)0xE000ED08UL)
+#define SCB_AIRCR           (*(volatile uint32_t *)0xE000ED0CUL)
 
 #define SYSTICK_CTRL        (*(volatile uint32_t *)0xE000E010UL)
 #define SYSTICK_LOAD        (*(volatile uint32_t *)0xE000E014UL)
